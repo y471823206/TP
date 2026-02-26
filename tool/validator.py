@@ -91,7 +91,7 @@ def should_trigger_llm(sim: float, freq: int) -> bool:
     return freq >= 100 or sim < 0.35
 
 
-def http_post_json(url: str, token: str, payload: dict, timeout: int = 20) -> dict:
+def http_post_json(url: str, token: str, payload: dict, timeout: int = 300) -> dict:
     data = json.dumps(payload).encode("utf-8")
     req = request.Request(url=url, data=data, method="POST")
     req.add_header("Content-Type", "application/json")
@@ -203,7 +203,16 @@ def canonicalize_row(raw: dict, idx: int) -> dict:
 
 
 def load_csv(path: Path) -> List[dict]:
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
+    for enc in ("utf-8-sig", "gbk", "gb2312", "latin-1"):
+        try:
+            with path.open("r", encoding=enc, newline="") as f:
+                f.read(1024)
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+    else:
+        enc = "utf-8-sig"
+    with path.open("r", encoding=enc, newline="") as f:
         reader = csv.DictReader(f)
         headers = list(reader.fieldnames or [])
         if not headers:
